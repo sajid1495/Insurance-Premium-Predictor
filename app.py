@@ -1,90 +1,42 @@
+from xml.parsers.expat import model
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, computed_field
-from typing import Annotated, Literal
-import pickle
-import pandas as pd
-
-#import them ml model
-with open("model/model.pkl", "rb") as f:
-    model = pickle.load(f) 
+from schema.user_input import UserInput
+from schema.prediction_response import PredictionResponse
+from model.predict import predict_output, model, MODEL_VERSION
 
 
 app = FastAPI()
 
 
-tier_1_cities = ["Mumbai", "Delhi", "Bangalore", "Chennai", "Kolkata", "Hyderabad", "Pune"]
-tier_2_cities = [
-    "Jaipur", "Chandigarh", "Indore", "Lucknow", "Patna", "Ranchi", "Visakhapatnam", "Coimbatore",
-    "Bhopal", "Nagpur", "Vadodara", "Surat", "Rajkot", "Jodhpur", "Raipur", "Amritsar", "Varanasi",
-    "Agra", "Dehradun", "Mysore", "Jabalpur", "Guwahati", "Thiruvananthapuram", "Ludhiana", "Nashik",
-    "Allahabad", "Udaipur", "Aurangabad", "Hubli", "Belgaum", "Salem", "Vijayawada", "Tiruchirappalli",
-    "Bhavnagar", "Gwalior", "Dhanbad", "Bareilly", "Aligarh", "Gaya", "Kozhikode", "Warangal",
-    "Kolhapur", "Bilaspur", "Jalandhar", "Noida", "Guntur", "Asansol", "Siliguri"
-]
-
-
-#pydantic model to validate incoming data
-class UserInput(BaseModel):
-    age: Annotated[int, Field(..., gt=0, description="Age of the user in years", example=30)] 
-    weight:Annotated[float, Field(..., gt=0, description="Weight of the user in kilograms", example=70.0)]
-    height: Annotated[float, Field(..., gt=0, description="Height of the user in centimeters", example=175.0)]
-    income_lpa: Annotated[float, Field(..., gt=0, description="Income of the user in lakhs per annum", example=5.0)]
-    smoker: Annotated[bool, Field(..., description="Whether the user is a smoker", example="true")]
-    city: Annotated[str, Field(..., description="City of residence", example="Mumbai")]
-    occupation: Annotated[Literal["retired", "freelancer", "student", "government_job", "business_owner", "unemployed", "private_job"], Field(..., description="Occupation of the user", example="retired")]
-
-    @computed_field
-    @property
-    def bmi(self) -> float:
-        height_in_meters = self.height / 100
-        return round(self.weight / (height_in_meters ** 2), 2) 
     
-
-    @computed_field
-    @property
-    def lifestyle_risk(self) -> str:
-        if self.smoker and self.bmi > 30:
-            return "high"
-        elif self.smoker or self.bmi > 27:
-            return "medium"
-        else:
-            return "low"
-        
-
-    @computed_field
-    @property
-    def age_group(self) -> str:
-        if self.age < 25:
-            return "young"
-        elif self.age < 45:
-            return "adult"
-        elif self.age < 60:
-            return "middle_aged"
-        return "senior"
-    
-    @computed_field
-    @property
-    def city_tier(self) -> int:
-        if self.city in tier_1_cities:
-            return 1
-        elif self.city in tier_2_cities:
-            return 2
-        else:
-            return 3
-        
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to the Insurance Premium Prediction API!"}
 
 
-@app.post("/predict")
+@app.get("/health")
+def health_check():
+    return {
+        "status": "OK", 
+        "model_version": MODEL_VERSION,
+        "model_loaded": model is not None
+    }
+
+
+@app.post("/predict", response_model=PredictionResponse) 
 def predict_premium(data: UserInput):
-    input_data = pd.DataFrame([{
+    user_input = {
         "bmi": data.bmi,
         "age_group": data.age_group,
         "lifestyle_risk": data.lifestyle_risk,
         "city_tier": data.city_tier,
         "income_lpa": data.income_lpa,        
         "occupation": data.occupation
-    }])
-
-    prediction = model.predict(input_data)[0]
-    return JSONResponse(status_code=200, content={"predicted_premium_category": prediction}) 
+   }
+    
+    try:
+        prediction = predict_output([user_input]) 
+        return JSONResponse(status_code=200, content={"response": prediction}) 
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)}) 
