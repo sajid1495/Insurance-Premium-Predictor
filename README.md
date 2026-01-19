@@ -73,7 +73,7 @@ uvicorn main:app --reload
 
 The API will be available at `http://127.0.0.1:8000`
 
-## � Docker
+## 🐳 Docker
 
 ### Build the Docker Image
 
@@ -89,7 +89,7 @@ docker run -d -p 8000:8000 insurance-premium-predictor
 
 The API will be available at `http://localhost:8000`
 
-## �📚 API Endpoints
+## 📚 API Endpoints
 
 ### `GET /`
 Welcome message
