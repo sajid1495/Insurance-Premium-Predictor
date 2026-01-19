@@ -75,13 +75,25 @@ The API will be available at `http://127.0.0.1:8000`
 
 ## 🐳 Docker
 
-### Build the Docker Image
+A pre-built Docker image is available on Docker Hub: [sajidruetcse/insurance-premium-predictor](https://hub.docker.com/r/sajidruetcse/insurance-premium-predictor)
+
+### Pull from Docker Hub
+
+```bash
+docker pull sajidruetcse/insurance-premium-predictor
+```
+
+### Run the Container
+
+```bash
+docker run -d -p 8000:8000 sajidruetcse/insurance-premium-predictor
+```
+
+### Build Locally (Optional)
 
 ```bash
 docker build -t insurance-premium-predictor .
 ```
-
-### Run the Container
 
 ```bash
 docker run -d -p 8000:8000 insurance-premium-predictor
